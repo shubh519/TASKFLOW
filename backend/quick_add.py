@@ -1,9 +1,17 @@
 import re
 
 
-# Priority keywords — checked in this exact order
-HIGH_PRIORITY_KEYWORDS = ["urgent", "asap", "high priority"]
-LOW_PRIORITY_KEYWORDS = ["whenever", "low priority"]
+# Priority keyword groups — checked in this exact order
+HIGH_PRIORITY_KEYWORDS = [
+    "urgent",
+    "asap",
+    "high priority",
+]
+
+LOW_PRIORITY_KEYWORDS = [
+    "whenever",
+    "low priority",
+]
 
 
 # Due-date phrases — checked in this exact order
@@ -29,48 +37,63 @@ DUE_DATE_PHRASES = [
 
 
 def _remove_phrase(text: str, phrase: str) -> str:
-    """Remove every occurrence of a matched phrase, case-insensitively."""
-    pattern = re.compile(re.escape(phrase), re.IGNORECASE)
+    """
+    Remove every occurrence of a phrase,
+    case-insensitively.
+    """
+    pattern = re.compile(
+        re.escape(phrase),
+        re.IGNORECASE,
+    )
+
     return pattern.sub("", text)
 
 
 def parse_task_description(description: str) -> dict:
     """
-    Deterministic mock parser used by the AI quick-add endpoint.
+    Deterministic mock parser for TaskFlow Quick Add.
+
+    No API key.
+    No network calls.
 
     Returns:
-        {
-            "title": str,
-            "priority": "low" | "medium" | "high",
-            "due_date_hint": str | None
-        }
+    {
+        "title": str,
+        "priority": "low" | "medium" | "high",
+        "due_date_hint": str | None
+    }
     """
 
     original_text = description
     lower_text = description.lower()
 
-    # -------------------------
-    # 1. Determine priority
-    # -------------------------
+    # --------------------------------
+    # STEP 1: Determine priority
+    # --------------------------------
+
     priority = "medium"
-    matched_priority_phrase = None
+    matched_priority_keywords = []
 
-    for keyword in HIGH_PRIORITY_KEYWORDS:
-        if keyword in lower_text:
-            priority = "high"
-            matched_priority_phrase = keyword
-            break
+    # Group 1 — high priority
+    if any(
+        keyword in lower_text
+        for keyword in HIGH_PRIORITY_KEYWORDS
+    ):
+        priority = "high"
+        matched_priority_keywords = HIGH_PRIORITY_KEYWORDS
 
-    if matched_priority_phrase is None:
-        for keyword in LOW_PRIORITY_KEYWORDS:
-            if keyword in lower_text:
-                priority = "low"
-                matched_priority_phrase = keyword
-                break
+    # Group 2 — low priority
+    elif any(
+        keyword in lower_text
+        for keyword in LOW_PRIORITY_KEYWORDS
+    ):
+        priority = "low"
+        matched_priority_keywords = LOW_PRIORITY_KEYWORDS
 
-    # -------------------------
-    # 2. Determine due date
-    # -------------------------
+    # --------------------------------
+    # STEP 2: Determine due date
+    # --------------------------------
+
     due_date_hint = None
 
     for phrase in DUE_DATE_PHRASES:
@@ -78,19 +101,32 @@ def parse_task_description(description: str) -> dict:
             due_date_hint = phrase
             break
 
-    # -------------------------
-    # 3. Build title
-    # -------------------------
+    # --------------------------------
+    # STEP 3: Create title
+    # --------------------------------
+
     title = original_text
 
-    if matched_priority_phrase:
-        title = _remove_phrase(title, matched_priority_phrase)
+    # Remove every occurrence of every keyword
+    # from ONLY the priority group that matched.
+    for keyword in matched_priority_keywords:
+        title = _remove_phrase(
+            title,
+            keyword,
+        )
 
+    # Remove every occurrence of the matched
+    # due-date phrase.
     if due_date_hint:
-        title = _remove_phrase(title, due_date_hint)
+        title = _remove_phrase(
+            title,
+            due_date_hint,
+        )
 
+    # Trim only leading/trailing whitespace.
     title = title.strip()
 
+    # Title must never be empty.
     if not title:
         title = "Untitled task"
 
