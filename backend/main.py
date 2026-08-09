@@ -3,8 +3,9 @@ from fastapi import (
     Depends,
     HTTPException,
     status,
-    Request
+    Request,
 )
+
 from fastapi.middleware.cors import CORSMiddleware
 
 from sqlalchemy.orm import Session
@@ -20,7 +21,7 @@ from . import models, schemas
 from .algorithms import (
     insertion_sort,
     binary_search,
-    linear_search
+    linear_search,
 )
 
 from .quick_add import parse_task_description
@@ -40,7 +41,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="TaskFlow API",
     description="Backend API for TaskFlow Task Management Platform",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 
@@ -52,7 +53,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5500",
-        "http://127.0.0.1:5500"
+        "http://127.0.0.1:5500",
     ],
     allow_credentials=True,
     allow_methods=[
@@ -60,11 +61,11 @@ app.add_middleware(
         "POST",
         "PUT",
         "DELETE",
-        "OPTIONS"
+        "OPTIONS",
     ],
     allow_headers=[
         "Content-Type",
-        "Accept"
+        "Accept",
     ],
 )
 
@@ -76,7 +77,7 @@ app.add_middleware(
 @app.middleware("http")
 async def log_request_time(
     request: Request,
-    call_next
+    call_next,
 ):
     start_time = time.perf_counter()
 
@@ -113,27 +114,29 @@ def root():
 @app.post(
     "/users",
     response_model=schemas.UserResponse,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
 )
 def create_user(
     user: schemas.UserCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     existing_user = (
         db.query(models.User)
-        .filter(models.User.email == user.email)
+        .filter(
+            models.User.email == user.email
+        )
         .first()
     )
 
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="A user with this email already exists"
+            detail="A user with this email already exists",
         )
 
     db_user = models.User(
         name=user.name,
-        email=user.email
+        email=user.email,
     )
 
     db.add(db_user)
@@ -145,10 +148,10 @@ def create_user(
 
 @app.get(
     "/users",
-    response_model=list[schemas.UserResponse]
+    response_model=list[schemas.UserResponse],
 )
 def get_users(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     return db.query(models.User).all()
 
@@ -160,11 +163,11 @@ def get_users(
 @app.post(
     "/projects",
     response_model=schemas.ProjectResponse,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
 )
 def create_project(
     project: schemas.ProjectCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     owner = (
         db.query(models.User)
@@ -177,13 +180,13 @@ def create_project(
     if owner is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Owner user not found"
+            detail="Owner user not found",
         )
 
     db_project = models.Project(
         name=project.name,
         description=project.description,
-        owner_id=project.owner_id
+        owner_id=project.owner_id,
     )
 
     db.add(db_project)
@@ -195,10 +198,10 @@ def create_project(
 
 @app.get(
     "/projects",
-    response_model=list[schemas.ProjectResponse]
+    response_model=list[schemas.ProjectResponse],
 )
 def get_projects(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     return db.query(models.Project).all()
 
@@ -210,11 +213,11 @@ def get_projects(
 @app.post(
     "/tasks",
     response_model=schemas.TaskResponse,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
 )
 def create_task(
     task: schemas.TaskCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     project = (
         db.query(models.Project)
@@ -227,7 +230,7 @@ def create_task(
     if project is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found"
+            detail="Project not found",
         )
 
     db_task = models.Task(
@@ -251,11 +254,11 @@ def create_task(
 @app.post(
     "/tasks/quick-add",
     response_model=schemas.TaskResponse,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
 )
 def quick_add_task(
     quick_task: schemas.QuickAddRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     # -----------------------------------------
     # Check project
@@ -278,12 +281,12 @@ def quick_add_task(
                     "type": "value_error",
                     "loc": [
                         "body",
-                        "project_id"
+                        "project_id",
                     ],
                     "msg": "Project not found",
-                    "input": quick_task.project_id
+                    "input": quick_task.project_id,
                 }
-            ]
+            ],
         )
 
     # -----------------------------------------
@@ -304,39 +307,43 @@ def quick_add_task(
         status="pending",
         priority=parsed["priority"],
         due_date=parsed["due_date_hint"],
-        project_id=quick_task.project_id
+        project_id=quick_task.project_id,
     )
 
     # -----------------------------------------
-    # Prepare DB object
+    # Validate response-shaped object
+    # BEFORE database persistence
+    # -----------------------------------------
+
+    try:
+        schemas.TaskResponse.model_validate(
+            {
+                "id": 0,
+                "title": validated_task.title,
+                "status": validated_task.status,
+                "priority": validated_task.priority,
+                "due_date": validated_task.due_date,
+                "project_id": validated_task.project_id,
+            }
+        )
+
+    except ValidationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=error.errors(),
+        )
+
+    # -----------------------------------------
+    # Persist only after validation succeeds
     # -----------------------------------------
 
     db_task = models.Task(
         **validated_task.model_dump()
     )
 
-    try:
-        db.add(db_task)
-
-        # Gives the object its database ID
-        # before final commit.
-        db.flush()
-
-        # Validate final response object
-        schemas.TaskResponse.model_validate(
-            db_task
-        )
-
-        db.commit()
-        db.refresh(db_task)
-
-    except ValidationError as error:
-        db.rollback()
-
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=error.errors()
-        )
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
 
     return db_task
 
@@ -347,11 +354,11 @@ def quick_add_task(
 
 @app.get(
     "/tasks",
-    response_model=list[schemas.TaskResponse]
+    response_model=list[schemas.TaskResponse],
 )
 def get_tasks(
     sort: str | None = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     db_tasks = (
         db.query(models.Task)
@@ -361,21 +368,22 @@ def get_tasks(
     task_records = []
 
     for task in db_tasks:
-        task_records.append({
-            "id": task.id,
-            "title": task.title,
-            "status": task.status,
-            "priority": task.priority,
-            "due_date": task.due_date,
-            "project_id": task.project_id
-        })
+        task_records.append(
+            {
+                "id": task.id,
+                "title": task.title,
+                "status": task.status,
+                "priority": task.priority,
+                "due_date": task.due_date,
+                "project_id": task.project_id,
+            }
+        )
 
     if sort == "priority":
-
         priority_rank = {
             "low": 1,
             "medium": 2,
-            "high": 3
+            "high": 3,
         }
 
         sortable_records = []
@@ -393,10 +401,9 @@ def get_tasks(
                 task_copy
             )
 
-        # Custom insertion sort
         insertion_sort(
             sortable_records,
-            "priority_rank"
+            "priority_rank",
         )
 
         for task in sortable_records:
@@ -416,12 +423,12 @@ def get_tasks(
 
 @app.get(
     "/tasks/search",
-    response_model=schemas.TaskResponse
+    response_model=schemas.TaskResponse,
 )
 def search_task(
     title: str,
     algo: str = "binary",
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     db_tasks = (
         db.query(models.Task)
@@ -431,50 +438,42 @@ def search_task(
     task_index = []
 
     for task in db_tasks:
-        task_index.append({
-            "id": task.id,
-            "title": task.title
-        })
-
-    # -----------------------------------------
-    # Binary search
-    # -----------------------------------------
+        task_index.append(
+            {
+                "id": task.id,
+                "title": task.title,
+            }
+        )
 
     if algo == "binary":
-
         insertion_sort(
             task_index,
-            "title"
+            "title",
         )
 
         result_index = binary_search(
             task_index,
             title,
-            "title"
+            "title",
         )
 
-    # -----------------------------------------
-    # Linear search
-    # -----------------------------------------
-
     elif algo == "linear":
-
         result_index = linear_search(
             task_index,
             title,
-            "title"
+            "title",
         )
 
     else:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="algo must be binary or linear"
+            detail="algo must be binary or linear",
         )
 
     if result_index == -1:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
+            detail="Task not found",
         )
 
     task_id = task_index[
@@ -498,11 +497,11 @@ def search_task(
 
 @app.get(
     "/tasks/{task_id}",
-    response_model=schemas.TaskResponse
+    response_model=schemas.TaskResponse,
 )
 def get_task_by_id(
     task_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     task = (
         db.query(models.Task)
@@ -515,7 +514,7 @@ def get_task_by_id(
     if task is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
+            detail="Task not found",
         )
 
     return task
@@ -527,12 +526,12 @@ def get_task_by_id(
 
 @app.put(
     "/tasks/{task_id}",
-    response_model=schemas.TaskResponse
+    response_model=schemas.TaskResponse,
 )
 def update_task(
     task_id: int,
     updated_task: schemas.TaskCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     task = (
         db.query(models.Task)
@@ -545,7 +544,7 @@ def update_task(
     if task is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
+            detail="Task not found",
         )
 
     project = (
@@ -560,7 +559,7 @@ def update_task(
     if project is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found"
+            detail="Project not found",
         )
 
     task.title = updated_task.title
@@ -582,7 +581,7 @@ def update_task(
 @app.delete("/tasks/{task_id}")
 def delete_task(
     task_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     task = (
         db.query(models.Task)
@@ -595,7 +594,7 @@ def delete_task(
     if task is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
+            detail="Task not found",
         )
 
     db.delete(task)
@@ -614,7 +613,7 @@ def delete_task(
 @app.get("/projects/{project_id}/stats")
 def get_project_stats(
     project_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     project = (
         db.query(models.Project)
@@ -627,12 +626,8 @@ def get_project_stats(
     if project is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found"
+            detail="Project not found",
         )
-
-    # -----------------------------------------
-    # Total tasks using JOIN + COUNT
-    # -----------------------------------------
 
     total_tasks = (
         db.query(
@@ -642,7 +637,7 @@ def get_project_stats(
         .outerjoin(
             models.Task,
             models.Project.id
-            == models.Task.project_id
+            == models.Task.project_id,
         )
         .filter(
             models.Project.id
@@ -651,20 +646,16 @@ def get_project_stats(
         .scalar()
     )
 
-    # -----------------------------------------
-    # Status counts using JOIN + GROUP BY
-    # -----------------------------------------
-
     status_counts = (
         db.query(
             models.Task.status,
-            func.count(models.Task.id)
+            func.count(models.Task.id),
         )
         .select_from(models.Project)
         .outerjoin(
             models.Task,
             models.Project.id
-            == models.Task.project_id
+            == models.Task.project_id,
         )
         .filter(
             models.Project.id
@@ -688,10 +679,10 @@ def get_project_stats(
         "total_tasks": total_tasks,
         "pending": counts.get(
             "pending",
-            0
+            0,
         ),
         "completed": counts.get(
             "completed",
-            0
-        )
+            0,
+        ),
     }
