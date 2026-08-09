@@ -1,7 +1,19 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    ForeignKey,
+    CheckConstraint
+)
+
 from sqlalchemy.orm import relationship
 
 from .database import Base
+
+
+# =========================================================
+# USER MODEL
+# =========================================================
 
 class User(Base):
     __tablename__ = "users"
@@ -28,7 +40,12 @@ class User(Base):
         "Project",
         back_populates="owner"
     )
-    
+
+
+# =========================================================
+# PROJECT MODEL
+# =========================================================
+
 class Project(Base):
     __tablename__ = "projects"
 
@@ -62,10 +79,22 @@ class Project(Base):
     tasks = relationship(
         "Task",
         back_populates="project"
-    ) 
-    
+    )
+
+
+# =========================================================
+# TASK MODEL
+# =========================================================
+
 class Task(Base):
     __tablename__ = "tasks"
+
+    __table_args__ = (
+        CheckConstraint(
+            "priority IN ('low', 'medium', 'high')",
+            name="ck_tasks_priority"
+        ),
+    )
 
     id = Column(
         Integer,
@@ -104,4 +133,4 @@ class Task(Base):
     project = relationship(
         "Project",
         back_populates="tasks"
-    )      
+    )
