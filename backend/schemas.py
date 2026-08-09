@@ -1,5 +1,6 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 from typing import Optional, Literal
+
 
 
 class UserCreate(BaseModel):
@@ -15,6 +16,8 @@ class UserResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+
 
 
 class ProjectCreate(BaseModel):
@@ -34,10 +37,18 @@ class ProjectResponse(BaseModel):
     }
 
 
+
 class TaskCreate(BaseModel):
-    title: str
+    title: str = Field(..., min_length=1, max_length=200)
+
     status: str = "pending"
-    priority: Literal["low", "medium", "high"] = "medium"
+
+    priority: Literal[
+        "low",
+        "medium",
+        "high"
+    ] = "medium"
+
     due_date: Optional[str] = None
     project_id: int
 
@@ -50,13 +61,21 @@ class TaskCreate(BaseModel):
             raise ValueError("Task title cannot be empty")
 
         return value
-    
+
+
 class TaskUpdate(BaseModel):
-    title: Optional[str] = None
+    title: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=200
+    )
+
     status: Optional[str] = None
+
     priority: Optional[
         Literal["low", "medium", "high"]
     ] = None
+
     due_date: Optional[str] = None
     project_id: Optional[int] = None
 
@@ -85,3 +104,16 @@ class TaskResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+
+
+
+class QuickAddRequest(BaseModel):
+    description: str = Field(..., min_length=1)
+    project_id: int = Field(..., gt=0)
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, value):
+        
+        return value
