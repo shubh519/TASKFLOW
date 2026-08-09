@@ -78,6 +78,12 @@ The entire application runs locally and does not require a paid API or external 
 - Binary Search
 - Linear Search
 
+| Dataset Size | Insertion Sort Comparisons | Linear Search Comparisons | Binary Search Comparisons |
+|---:|---:|---:|---:|
+| 10 | 45 | 10 | 4 |
+| 100 | 4950 | 100 | 7 |
+| 500 | 124750 | 500 | 9 |
+
 ---
 
 # Project Structure
