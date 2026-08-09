@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>TaskFlow Dashboard</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header class="topbar">
+        <div>
+            <h1>TaskFlow</h1>
+            <p>Dark Store Engineering Task Dashboard</p>
+        </div>
+
+        <span class="status-badge">
+            ● Backend Connected
+        </span>
+    </header>
+
+
+    <main class="dashboard">
+
+        <!-- Statistics -->
+        <section class="stats-section">
+
+            <div class="stat-card">
+                <span>Total Tasks</span>
+                <strong id="totalTasks">0</strong>
+            </div>
+
+            <div class="stat-card">
+                <span>Pending</span>
+                <strong id="pendingTasks">0</strong>
+            </div>
+
+            <div class="stat-card">
+                <span>Completed</span>
+                <strong id="completedTasks">0</strong>
+            </div>
+
+        </section>
+
+
+        <!-- Add Task -->
+        <section class="form-section">
+
+            <h2>Add New Task</h2>
+
+            <form id="taskForm">
+
+                <div class="form-group">
+                    <label for="taskTitle">Task Title</label>
+
+                    <input
+                        type="text"
+                        id="taskTitle"
+                        placeholder="Example: Complete backend"
+                    >
+
+                    <small
+                        id="titleError"
+                        class="error-message"
+                    ></small>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="priority">Priority</label>
+
+                    <select id="priority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="dueDate">Due Date</label>
+
+                    <input
+                        type="text"
+                        id="dueDate"
+                        placeholder="tomorrow / next friday"
+                    >
+                </div>
+
+
+                <div class="form-group">
+                    <label for="projectId">Project ID</label>
+
+                    <input
+                        type="number"
+                        id="projectId"
+                        value="1"
+                        min="1"
+                    >
+                </div>
+
+
+                <button
+                    type="submit"
+                    class="primary-button"
+                >
+                    + Add Task
+                </button>
+
+            </form>
+
+        </section>
+
+
+        <!-- Task List -->
+        <section class="task-section">
+
+            <div class="section-heading">
+                <div>
+                    <h2>Project Tasks</h2>
+                    <p>
+                        Tasks loaded directly from TaskFlow backend
+                    </p>
+                </div>
+
+                <button
+                    id="refreshButton"
+                    class="secondary-button"
+                >
+                    Refresh
+                </button>
+            </div>
+
+
+            <div id="loadingMessage">
+                Loading tasks...
+            </div>
+
+
+            <div id="taskList">
+                <!-- JavaScript inserts tasks here -->
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <footer>
+        TaskFlow · Engineering Operations Dashboard
+    </footer>
+
+
+    <script src="script.js"></script>
+
+</body>
+</html>
