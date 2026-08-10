@@ -1412,3 +1412,201 @@ Shubham Kumar
 **TaskFlow – Engineering Operations Dashboard**
 
 A full-stack task management platform built using FastAPI, SQLAlchemy, SQLite, HTML, CSS, JavaScript, custom sorting/searching algorithms, and deterministic AI-assisted task parsing.
+
+---
+
+# Section 3 — Integrated AI Quick-Add
+
+TaskFlow provides a Quick-Add feature that converts a free-text task
+description into structured task information and stores the resulting task
+in the same database used by the rest of the application.
+
+## Quick-Add Endpoint
+
+### POST /tasks/quick-add
+
+Example request:
+
+{
+  "description": "Finish project next friday urgent",
+  "project_id": 1
+}
+
+The endpoint parses the description and creates a real task associated with
+the specified project.
+
+Example response:
+
+{
+  "id": 1,
+  "title": "Finish project",
+  "status": "pending",
+  "priority": "high",
+  "due_date": "next friday",
+  "project_id": 1
+}
+
+A successful request returns HTTP status code `201`.
+
+If the request body is malformed or the supplied `project_id` does not
+reference an existing project, the API returns HTTP `422` and does not create
+a task.
+
+---
+
+## Prompt Structure
+
+The Quick-Add feature uses the standard role-based structure used by LLM
+messaging systems.
+
+### System role
+
+The system instruction describes the expected parsing behaviour. It instructs
+the parser/model to convert a free-text task description into structured data
+containing:
+
+- title
+- priority
+- due_date_hint
+
+### User role
+
+The user message contains the original free-text task description that needs
+to be parsed.
+
+Keeping these roles separate means that the same interface can be used by the
+deterministic mock parser and, optionally, by a real LLM implementation.
+
+---
+
+## Prompting Technique and Rationale
+
+The Quick-Add design is primarily modelled on zero-shot prompting with explicit
+rule-based instructions. The system message defines the required output
+structure and parsing behaviour, while the user message contains only the task
+description. The application does not require a model to learn the task from
+previous conversation history.
+
+For grading and normal execution, TaskFlow uses a deterministic mock parser.
+The parser follows fixed keyword rules for priority and due-date extraction,
+so the same input always produces the same output. This also makes the feature
+usable without an API key, network connection, token usage, or paid AI
+service.
+
+The worked examples below resemble few-shot examples from a documentation
+perspective because they demonstrate expected input-output behaviour. However,
+the deterministic parser does not depend on these examples when executing.
+
+This approach improves response reliability because parsing does not depend on
+model randomness. It also eliminates token cost for the required baseline.
+A real LLM could optionally be placed behind a feature flag, while the mock
+parser remains the automatic fallback whenever the real model is disabled or
+an API key is unavailable.
+
+---
+
+## Quick-Add Worked Examples
+
+### Example 1
+
+Input:
+
+`This is urgent, mark it ASAP please`
+
+Parsed output:
+
+{
+  "title": "This is , mark it  please",
+  "priority": "high",
+  "due_date_hint": null
+}
+
+### Example 2
+
+Input:
+
+`Finish the report next Friday, it's urgent`
+
+Parsed output:
+
+{
+  "title": "Finish the report , it's",
+  "priority": "high",
+  "due_date_hint": "next friday"
+}
+
+### Example 3
+
+Input:
+
+`tomorrow review tomorrow`
+
+Parsed output:
+
+{
+  "title": "review",
+  "priority": "medium",
+  "due_date_hint": "tomorrow"
+}
+
+### Example 4
+
+Input:
+
+`low priority documentation next monday`
+
+Parsed output:
+
+{
+  "title": "documentation",
+  "priority": "low",
+  "due_date_hint": "next monday"
+}
+
+### Example 5
+
+Input:
+
+`whenever do this monday`
+
+Parsed output:
+
+{
+  "title": "do this",
+  "priority": "low",
+  "due_date_hint": "monday"
+}
+
+### Example 6 — Empty Input
+
+Input:
+
+`   `
+
+Parsed output:
+
+{
+  "title": "Untitled task",
+  "priority": "medium",
+  "due_date_hint": null
+}
+
+---
+
+## Deterministic Mock Parser
+
+The required baseline Quick-Add implementation makes:
+
+- zero network calls
+- zero external API calls
+- zero paid-service calls
+- zero API-key requirements
+
+Priority values are restricted to:
+
+`low`, `medium`, and `high`.
+
+The mock parser is the default implementation used by
+`POST /tasks/quick-add`.
+
+---
