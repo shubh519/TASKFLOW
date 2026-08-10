@@ -47,8 +47,11 @@ def _remove_phrase(text: str, phrase: str) -> str:
     )
 
     return pattern.sub("", text)
+# =========================================================
+# DETERMINISTIC QUICK-ADD PARSER
+# =========================================================
 
-
+# Deterministic Quick-Add parser used by the TaskFlow API.
 def parse_task_description(description: str) -> dict:
     """
     Deterministic mock parser for TaskFlow Quick Add.
