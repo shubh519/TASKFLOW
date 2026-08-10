@@ -104,11 +104,10 @@ def _remove_phrase(text: str, phrase: str) -> str:
     )
 
     return pattern.sub("", text)
-
-
 # =========================================================
 # DETERMINISTIC QUICK-ADD PARSER
 # =========================================================
+
 
 def parse_task_description(description: str) -> dict:
     """
