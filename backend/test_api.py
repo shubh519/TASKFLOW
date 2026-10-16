@@ -1,7 +1,12 @@
 from fastapi.testclient import TestClient
-from .main import app
+from .main import app, create_access_token
 
-client = TestClient(app)
+token = create_access_token({"sub": "1"})
+
+client = TestClient(
+    app,
+    headers={"Authorization": f"Bearer {token}"},
+)
 
 
 def test_root():

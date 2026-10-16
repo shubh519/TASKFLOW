@@ -35,6 +35,7 @@ class User(Base):
         nullable=False,
         index=True
     )
+    password_hash = Column(String, nullable=True)
 
     projects = relationship(
         "Project",
