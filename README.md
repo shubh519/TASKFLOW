@@ -89,7 +89,9 @@ TASKFLOW/
 │   ├── models.py
 │   ├── quick_add.py
 │   ├── schemas.py
-│   └── test_api.py
+│   ├── add_password_column.py
+│   ├── test_api.py
+│   └── test_auth.py
 │
 ├── frontend/
 │   ├── index.html
@@ -1610,3 +1612,60 @@ The mock parser is the default implementation used by
 `POST /tasks/quick-add`.
 
 ---
+
+---
+
+## JWT Authentication (Final Setup)
+
+TaskFlow supports account registration and login with hashed passwords and short-lived JWT access tokens.
+
+### Install dependencies
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+### Configure the JWT signing key
+
+Create a strong random key in the current PowerShell session before starting the API:
+
+```powershell
+$env:TASKFLOW_SECRET_KEY = python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Use the same value for the API process and test process. This example creates a new key each time it is run; existing tokens will stop working if the key changes. For a persistent local setup, store the key in a local `.env`/environment configuration that is never committed to Git.
+
+### Existing SQLite database migration
+
+If you are using a database created before JWT support, back it up first, then run this migration once:
+
+```powershell
+python -m backend.add_password_column
+```
+
+Do not repeatedly modify the database manually. Fresh databases created from the current SQLAlchemy models include `password_hash` automatically.
+
+### Start the API
+
+```powershell
+python -m uvicorn backend.main:app --reload
+```
+
+Open `http://127.0.0.1:8000/docs` to test the API. Register at `POST /auth/register`, log in at `POST /auth/login`, then use the returned `access_token` with the Swagger **Authorize** dialog as a Bearer token. Do not include quotation marks around the token itself.
+
+The frontend includes registration and login forms and sends the session token with protected task requests. Serve `frontend/` from `http://localhost:5500` or `http://127.0.0.1:5500` to match the configured CORS origins.
+
+### Tests
+
+```powershell
+python -m pytest backend -v
+```
+
+The existing API tests cover task behavior. `backend/test_auth.py` adds checks for registration, login, invalid credentials/tokens, and user/project isolation.
+
+### Security notes
+
+- Never commit JWT signing keys, passwords, `.env` files, SQLite databases, or database backups.
+- Passwords are hashed with `pwdlib`/Argon2 and are never returned by API responses.
+- Access tokens expire after 30 minutes.
+- The frontend keeps the access token in `sessionStorage`; this is suitable for a learning/demo app, but production deployments should additionally review XSS protections, HTTPS, rate limiting, and secret management.

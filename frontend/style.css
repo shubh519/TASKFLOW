@@ -402,3 +402,26 @@ footer {
         gap: 10px;
     }
 }
+
+/* Authentication UI */
+.auth-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+}
+.auth-grid form {
+    display: grid;
+    gap: 0.65rem;
+    align-content: start;
+    padding: 1rem;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+}
+#authSection input {
+    width: 100%;
+    box-sizing: border-box;
+}
+#authMessage {
+    display: block;
+    margin-top: 0.75rem;
+}

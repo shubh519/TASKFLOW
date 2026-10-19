@@ -3,158 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>TaskFlow Dashboard</title>
-
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20261019projectfix">
+    <style>[hidden] { display: none !important; }</style>
 </head>
-
 <body>
-
     <header class="topbar">
-        <div>
-            <h1>TaskFlow</h1>
-            <p>Dark Store Engineering Task Dashboard</p>
-        </div>
-
-        <span class="status-badge">
-            ● Backend Connected
-        </span>
+        <div><h1>TaskFlow</h1><p>Dark Store Engineering Task Dashboard</p></div>
+        <span class="status-badge">● Backend Connected</span>
     </header>
-
-
     <main class="dashboard">
-
-        <!-- Statistics -->
+        <section class="form-section" id="authSection">
+            <h2>Account</h2>
+            <p id="authStatus">Log in or create an account to manage your own tasks.</p>
+            <div class="auth-grid">
+                <form id="loginForm">
+                    <h3>Log in</h3>
+                    <label for="loginEmail">Email</label>
+                    <input id="loginEmail" type="email" required autocomplete="username">
+                    <label for="loginPassword">Password</label>
+                    <input id="loginPassword" type="password" required autocomplete="current-password">
+                    <button class="primary-button" type="submit">Log in</button>
+                </form>
+                <form id="registerForm">
+                    <h3>Create account</h3>
+                    <label for="registerName">Name</label>
+                    <input id="registerName" type="text" required minlength="1" maxlength="100" autocomplete="name">
+                    <label for="registerEmail">Email</label>
+                    <input id="registerEmail" type="email" required autocomplete="email">
+                    <label for="registerPassword">Password (at least 8 characters)</label>
+                    <input id="registerPassword" type="password" required minlength="8" maxlength="128" autocomplete="new-password">
+                    <button class="primary-button" type="submit">Register</button>
+                </form>
+            </div>
+            <button id="logoutButton" class="secondary-button" type="button" hidden>Log out</button>
+            <small id="authMessage" role="status"></small>
+        </section>
         <section class="stats-section">
-
-            <div class="stat-card">
-                <span>Total Tasks</span>
-                <strong id="totalTasks">0</strong>
-            </div>
-
-            <div class="stat-card">
-                <span>Pending</span>
-                <strong id="pendingTasks">0</strong>
-            </div>
-
-            <div class="stat-card">
-                <span>Completed</span>
-                <strong id="completedTasks">0</strong>
-            </div>
-
+            <div class="stat-card"><span>Total Tasks</span><strong id="totalTasks">0</strong></div>
+            <div class="stat-card"><span>Pending</span><strong id="pendingTasks">0</strong></div>
+            <div class="stat-card"><span>Completed</span><strong id="completedTasks">0</strong></div>
         </section>
-
-
-        <!-- Add Task -->
         <section class="form-section">
-
             <h2>Add New Task</h2>
-
             <form id="taskForm">
-
-                <div class="form-group">
-                    <label for="taskTitle">Task Title</label>
-
-                    <input
-                        type="text"
-                        id="taskTitle"
-                        placeholder="Example: Complete backend"
-                    >
-
-                    <small
-                        id="titleError"
-                        class="error-message"
-                    ></small>
-                </div>
-
-
-                <div class="form-group">
-                    <label for="priority">Priority</label>
-
-                    <select id="priority">
-                        <option value="low">Low</option>
-                        <option value="medium" selected>Medium</option>
-                        <option value="high">High</option>
-                    </select>
-                </div>
-
-
-                <div class="form-group">
-                    <label for="dueDate">Due Date</label>
-
-                    <input
-                        type="text"
-                        id="dueDate"
-                        placeholder="tomorrow / next friday"
-                    >
-                </div>
-
-
-                <div class="form-group">
-                    <label for="projectId">Project ID</label>
-
-                    <input
-                        type="number"
-                        id="projectId"
-                        value="1"
-                        min="1"
-                    >
-                </div>
-
-
-                <button
-                    type="submit"
-                    class="primary-button"
-                >
-                    + Add Task
-                </button>
-
+                <div class="form-group"><label for="taskTitle">Task Title</label><input type="text" id="taskTitle" placeholder="Example: Complete backend"><small id="titleError" class="error-message"></small></div>
+                <div class="form-group"><label for="priority">Priority</label><select id="priority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
+                <div class="form-group"><label for="dueDate">Due Date</label><input type="text" id="dueDate" placeholder="tomorrow / next friday"></div>
+                <div class="form-group"><label for="projectId">Project</label><select id="projectId" required><option value="">Loading your projects...</option></select></div>
+                <button type="submit" class="primary-button">+ Add Task</button>
             </form>
-
         </section>
-
-
-        <!-- Task List -->
         <section class="task-section">
-
-            <div class="section-heading">
-                <div>
-                    <h2>Project Tasks</h2>
-                    <p>
-                        Tasks loaded directly from TaskFlow backend
-                    </p>
-                </div>
-
-                <button
-                    id="refreshButton"
-                    class="secondary-button"
-                >
-                    Refresh
-                </button>
-            </div>
-
-
-            <div id="loadingMessage">
-                Loading tasks...
-            </div>
-
-
-            <div id="taskList">
-                <!-- JavaScript inserts tasks here -->
-            </div>
-
+            <div class="section-heading"><div><h2>Project Tasks</h2><p>Tasks loaded directly from TaskFlow backend</p></div><button id="refreshButton" class="secondary-button">Refresh</button></div>
+            <div id="loadingMessage">Loading tasks...</div>
+            <div id="taskList"></div>
         </section>
-
     </main>
-
-
-    <footer>
-        TaskFlow · Engineering Operations Dashboard
-    </footer>
-
-
-    <script src="script.js"></script>
-
+    <footer>TaskFlow · Engineering Operations Dashboard</footer>
+    <script src="script.js?v=20261019projectfix"></script>
 </body>
 </html>

@@ -1,4 +1,136 @@
-const API_URL = "http://127.0.0.1:8000";
+﻿const API_URL = "http://127.0.0.1:8000";
+let accessToken = sessionStorage.getItem("taskflow_access_token");
+
+function authFetch(url, options = {}) {
+    const headers = new Headers(options.headers || {});
+    if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+    return fetch(url, { ...options, headers });
+}
+
+
+function getCurrentUserIdFromToken() {
+    if (!accessToken) throw new Error("Please log in first.");
+    try {
+        const payloadPart = accessToken.split(".")[1]
+            .replace(/-/g, "+").replace(/_/g, "/");
+        const payload = JSON.parse(atob(payloadPart));
+        const userId = Number(payload.sub);
+        if (!Number.isInteger(userId) || userId <= 0) throw new Error();
+        return userId;
+    } catch {
+        throw new Error("Your login session is invalid. Please log in again.");
+    }
+}
+
+async function apiJson(url, options = {}) {
+    const response = await authFetch(url, options);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        const detail = Array.isArray(data.detail)
+            ? data.detail.map(item => item.msg || "Invalid input").join(", ")
+            : (data.detail || `Request failed (${response.status})`);
+        throw new Error(detail);
+    }
+    return data;
+}
+
+async function loadProjects() {
+    if (!accessToken) return;
+    const projectSelect = document.getElementById("projectId");
+    projectSelect.innerHTML = '<option value="">Loading projects...</option>';
+    try {
+        let projects = await apiJson(`${API_URL}/projects`);
+
+        // New accounts may not have a project yet. Create one for the logged-in user.
+        if (projects.length === 0) {
+            const ownerId = getCurrentUserIdFromToken();
+            await apiJson(`${API_URL}/projects`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                body: JSON.stringify({
+                    name: "My TaskFlow Project",
+                    description: "Default project for personal tasks",
+                    owner_id: ownerId
+                })
+            });
+            projects = await apiJson(`${API_URL}/projects`);
+        }
+
+        projectSelect.innerHTML = "";
+        for (const project of projects) {
+            const option = document.createElement("option");
+            option.value = String(project.id);
+            option.textContent = `${project.name} (ID: ${project.id})`;
+            projectSelect.appendChild(option);
+        }
+        if (projects.length === 0) {
+            projectSelect.innerHTML = '<option value="">No projects available</option>';
+            throw new Error("No project is available for this account.");
+        }
+    } catch (error) {
+        projectSelect.innerHTML = '<option value="">Unable to load projects</option>';
+        const message = `Project loading failed: ${error.message}`;
+        const authMessage = document.getElementById("authMessage");
+        if (authMessage) authMessage.textContent = message;
+        console.error(message, error);
+        throw error;
+    }
+}
+
+
+
+function updateAuthUI(message = "") {
+    const loggedIn = Boolean(accessToken);
+    const status = document.getElementById("authStatus");
+    const logoutButton = document.getElementById("logoutButton");
+    const authMessage = document.getElementById("authMessage");
+    const loginForm = document.getElementById("loginForm");
+    const registerForm = document.getElementById("registerForm");
+    const authGrid = document.querySelector("#authSection .auth-grid");
+
+    if (status) {
+        status.textContent = loggedIn
+            ? "You are logged in. Your tasks are scoped to your account."
+            : "Log in or create an account to manage your own tasks.";
+    }
+
+    // Hide the whole forms container while logged in, not just each form.
+    if (authGrid) {
+        authGrid.hidden = loggedIn;
+        authGrid.style.setProperty("display", loggedIn ? "none" : "", "important");
+    }
+    [loginForm, registerForm].forEach((form) => {
+        if (!form) return;
+        form.hidden = loggedIn;
+        if (loggedIn) form.style.setProperty("display", "none", "important");
+        else form.style.removeProperty("display");
+    });
+
+    if (logoutButton) {
+        logoutButton.hidden = !loggedIn;
+        if (loggedIn) logoutButton.style.removeProperty("display");
+        else logoutButton.style.setProperty("display", "none", "important");
+    }
+    if (authMessage) authMessage.textContent = message;
+}
+
+
+async function authenticate(path, payload) {
+    const response = await authFetch(`${API_URL}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(payload)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        const detail = Array.isArray(data.detail)
+            ? data.detail.map(item => item.msg || "Invalid input").join(", ")
+            : (data.detail || "Authentication failed");
+        throw new Error(detail);
+    }
+    return data;
+}
+
 
 const taskForm =
     document.getElementById("taskForm");
@@ -42,21 +174,28 @@ let tasks = [];
 
 
 
-function saveTasksToCache() {
-
-    localStorage.setItem(
-        "taskflow_tasks",
-        JSON.stringify(tasks)
-    );
+function getTaskCacheKey() {
+    if (!accessToken) return null;
+    try {
+        const payloadPart = accessToken.split(".")[1]
+            .replace(/-/g, "+").replace(/_/g, "/");
+        const payload = JSON.parse(atob(payloadPart));
+        return `taskflow_tasks_user_${payload.sub}`;
+    } catch {
+        return null;
+    }
 }
 
+function saveTasksToCache() {
+    const cacheKey = getTaskCacheKey();
+    if (!cacheKey) return;
+    localStorage.setItem(cacheKey, JSON.stringify(tasks));
+}
 
 function loadCachedTasks() {
-
-    const cachedTasks =
-        localStorage.getItem(
-            "taskflow_tasks"
-        );
+    const cacheKey = getTaskCacheKey();
+    if (!cacheKey) return;
+    const cachedTasks = localStorage.getItem(cacheKey);
 
     if (cachedTasks) {
 
@@ -72,14 +211,20 @@ function loadCachedTasks() {
 
 
 async function loadTasks() {
+    if (!accessToken) {
+        tasks = [];
+        renderTasks([]);
+        updateStatistics([]);
+        loadingMessage.textContent = "Log in to load your tasks.";
+        return;
+    }
 
-    loadingMessage.textContent =
-        "Loading latest tasks...";
+    loadingMessage.textContent = "Loading latest tasks...";
 
     try {
 
         const response =
-            await fetch(
+            await authFetch(
                 `${API_URL}/tasks`
             );
 
@@ -283,30 +428,25 @@ taskForm.addEventListener(
         titleError.textContent = "";
 
 
+        const selectedProjectId = Number(projectIdInput.value);
+        if (!Number.isInteger(selectedProjectId) || selectedProjectId <= 0) {
+            alert("Please select one of your projects first.");
+            return;
+        }
+
         const newTask = {
-
-            title: title,
-
+            title,
             status: "pending",
-
-            priority:
-                priorityInput.value,
-
-            due_date:
-                dueDateInput.value.trim()
-                || null,
-
-            project_id:
-                Number(
-                    projectIdInput.value
-                )
+            priority: priorityInput.value,
+            due_date: dueDateInput.value.trim() || null,
+            project_id: selectedProjectId
         };
 
 
         try {
 
             const response =
-                await fetch(
+                await authFetch(
                     `${API_URL}/tasks`,
                     {
                         method: "POST",
@@ -354,8 +494,6 @@ taskForm.addEventListener(
             priorityInput.value =
                 "medium";
 
-            projectIdInput.value =
-                "1";
 
 
         } catch (error) {
@@ -442,7 +580,7 @@ async function editTask(task) {
     try {
 
         const response =
-            await fetch(
+            await authFetch(
                 `${API_URL}/tasks/${task.id}`,
                 {
                     method: "PUT",
@@ -518,7 +656,7 @@ async function deleteTask(taskId) {
     try {
 
         const response =
-            await fetch(
+            await authFetch(
                 `${API_URL}/tasks/${taskId}`,
                 {
                     method: "DELETE"
@@ -595,6 +733,69 @@ refreshButton.addEventListener(
 
 
 
-loadCachedTasks();
 
-loadTasks();
+const loginForm = document.getElementById("loginForm");
+const registerForm = document.getElementById("registerForm");
+const logoutButton = document.getElementById("logoutButton");
+
+loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+        const data = await authenticate("/auth/login", {
+            email: document.getElementById("loginEmail").value.trim(),
+            password: document.getElementById("loginPassword").value
+        });
+        accessToken = data.access_token;
+        sessionStorage.setItem("taskflow_access_token", accessToken);
+        updateAuthUI("Login successful.");
+        await loadProjects();
+        await loadTasks();
+    } catch (error) {
+        updateAuthUI(error.message);
+    }
+});
+
+registerForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+        const name = document.getElementById("registerName").value.trim();
+        const email = document.getElementById("registerEmail").value.trim();
+        const password = document.getElementById("registerPassword").value;
+        await authenticate("/auth/register", { name, email, password });
+        const data = await authenticate("/auth/login", { email, password });
+        accessToken = data.access_token;
+        sessionStorage.setItem("taskflow_access_token", accessToken);
+        registerForm.reset();
+        updateAuthUI("Account created and logged in.");
+        await loadProjects();
+        await loadTasks();
+    } catch (error) {
+        updateAuthUI(error.message);
+    }
+});
+
+logoutButton.addEventListener("click", () => {
+    accessToken = null;
+    sessionStorage.removeItem("taskflow_access_token");
+    tasks = [];
+    saveTasksToCache();
+    renderTasks(tasks);
+    updateStatistics(tasks);
+    const projectSelect = document.getElementById("projectId");
+    projectSelect.innerHTML = '<option value="">Log in to load projects</option>';
+    updateAuthUI("You have logged out.");
+    loadTasks();
+});
+
+updateAuthUI();
+
+if (accessToken) {
+    loadCachedTasks();
+    loadProjects().then(loadTasks).catch(() => {
+        loadingMessage.textContent = "Could not load your projects. Check the backend and log in again if needed.";
+    });
+} else {
+    renderTasks([]);
+    updateStatistics([]);
+    loadingMessage.textContent = "Log in to load your tasks.";
+}

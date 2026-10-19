@@ -3,3 +3,8 @@ __pycache__/
 *.pyc
 taskflow.db
 .pytest_cache/
+.env
+.env.*
+!.env.example
+taskflow_backup.db
+*.db-journal
