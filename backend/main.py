@@ -47,6 +47,9 @@ app = FastAPI(
     title="TaskFlow API",
     description="Backend API for TaskFlow Task Management Platform",
     version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
 
@@ -230,12 +233,19 @@ def login_user(
 # CORS
 # =========================================================
 
+# Add your deployed frontend URL in Render as FRONTEND_URL.
+# Local development origins remain available too.
+frontend_url = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
+allowed_origins = [
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
+]
+if frontend_url:
+    allowed_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=[
         "GET",
